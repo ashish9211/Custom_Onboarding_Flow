@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-
+const BASE_URL = "https://custom-onboarding-flow.onrender.com";
 const availableComponents = [
   { key: "aboutMe", label: "About Me" },
   { key: "address", label: "Address" },
@@ -16,7 +16,7 @@ const AdminConfig = () => {
   // Fetch existing config on mount with defaults
   useEffect(() => {
     axios
-      .get("http://localhost:5000/api/config")
+      .get(`${BASE_URL}/api/config`)
       .then((res) => {
         setPage2Components(res.data.page2Components?.length ? res.data.page2Components : ["aboutMe"]);
         setPage3Components(res.data.page3Components?.length ? res.data.page3Components : ["address"]);
@@ -53,7 +53,7 @@ const AdminConfig = () => {
     }
 
     try {
-      await axios.post("http://localhost:5000/api/config", {
+      await axios.post(`${BASE_URL}/api/config`, {
         page2Components,
         page3Components,
       });

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-
+const BASE_URL = "https://custom-onboarding-flow.onrender.com";
 const DataTable = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -8,7 +8,7 @@ const DataTable = () => {
 
   useEffect(() => {
     axios
-      .get("http://localhost:5000/api/users")
+      .get(`${BASE_URL}/api/users`)
       .then((res) => {
         setUsers(res.data);
         setLoading(false);

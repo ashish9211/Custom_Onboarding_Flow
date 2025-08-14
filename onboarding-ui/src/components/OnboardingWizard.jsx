@@ -75,11 +75,11 @@ const OnboardingWizard = () => {
   const [aboutMe, setAboutMe] = useState("");
   const [address, setAddress] = useState({ street: "", city: "", state: "", zip: "" });
   const [birthdate, setBirthdate] = useState(""); // string YYYY-MM-DD
-
+  const BASE_URL = "https://custom-onboarding-flow.onrender.com";
   // Fetch config & check localStorage on mount
   useEffect(() => {
     axios
-      .get("http://localhost:5000/api/config")
+      .get(`${BASE_URL}/api/config`)
       .then((res) => setConfig(res.data))
       .catch((err) => console.error("Failed to fetch config", err));
 
@@ -98,7 +98,7 @@ const OnboardingWizard = () => {
       return;
     }
     try {
-      const res = await axios.post("http://localhost:5000/api/users", { email, password });
+      const res = await axios.post(`${BASE_URL}/api/users`, { email, password });
       setUserId(res.data.id);
       localStorage.setItem("userId", res.data.id);
       setStep(2);
@@ -124,7 +124,7 @@ const OnboardingWizard = () => {
     });
 
     try {
-      await axios.patch(`http://localhost:5000/api/users/${userId}`, updateData);
+      await axios.patch(`${BASE_URL}/api/users/${userId}`, updateData);
       if (step === 3) {
         alert("Onboarding Complete! Thank you.");
         localStorage.removeItem("userId");
