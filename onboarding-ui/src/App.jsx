@@ -2,7 +2,7 @@ import { useState } from 'react'
 import './App.css'
 
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import OnboardingWizard from './components/OnBoardingWizard';
+import OnboardingWizard from './components/OnboardingWizard';
 import AdminConfig from './components/AdminConfig';
 import DataTable from './components/DataTable';
 function App() {
