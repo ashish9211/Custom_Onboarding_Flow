@@ -55,8 +55,8 @@ const componentMap = {
       <label className="block mb-2 font-semibold text-gray-700">Birthdate</label>
       <input
         type="date"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+        value={value || ""} // Keep as string YYYY-MM-DD
+        onChange={(e) => onChange(e.target.value)} // Store string
         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
       />
     </div>
@@ -74,7 +74,7 @@ const OnboardingWizard = () => {
   // Form data
   const [aboutMe, setAboutMe] = useState("");
   const [address, setAddress] = useState({ street: "", city: "", state: "", zip: "" });
-  const [birthdate, setBirthdate] = useState("");
+  const [birthdate, setBirthdate] = useState(""); // string YYYY-MM-DD
 
   // Fetch config & check localStorage on mount
   useEffect(() => {
@@ -90,7 +90,6 @@ const OnboardingWizard = () => {
     }
   }, []);
 
-  // Step 1 submit
   const handleStep1Submit = async (e) => {
     e.preventDefault();
     setError(null);
@@ -108,7 +107,6 @@ const OnboardingWizard = () => {
     }
   };
 
-  // Steps 2 & 3 submit
   const handleStepSubmit = async () => {
     if (!userId) return setError("User ID missing");
 
@@ -122,7 +120,7 @@ const OnboardingWizard = () => {
         updateData.address_city = address.city;
         updateData.address_state = address.state;
         updateData.address_zip = address.zip;
-      } else if (comp === "birthdate") updateData.birthdate = birthdate;
+      } else if (comp === "birthdate") updateData.birthdate = birthdate; // string
     });
 
     try {
@@ -143,7 +141,6 @@ const OnboardingWizard = () => {
     }
   };
 
-  // Step 1: Create Account
   if (step === 1) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
@@ -187,7 +184,6 @@ const OnboardingWizard = () => {
     );
   }
 
-  // Steps 2 & 3: Dynamic
   const componentsOnStep = step === 2 ? config.page2Components : config.page3Components;
 
   return (

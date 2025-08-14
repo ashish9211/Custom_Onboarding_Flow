@@ -44,7 +44,7 @@ const DataTable = () => {
           <table className="w-full text-left text-gray-700">
             <thead className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white">
               <tr>
-                <th className="px-6 py-3 text-sm font-semibold">ID</th>
+                {/* <th className="px-6 py-3 text-sm font-semibold">ID</th> */}
                 <th className="px-6 py-3 text-sm font-semibold">Email</th>
                 <th className="px-6 py-3 text-sm font-semibold">Birthdate</th>
                 <th className="px-6 py-3 text-sm font-semibold">Street</th>
@@ -62,7 +62,7 @@ const DataTable = () => {
                     idx % 2 === 0 ? "bg-white" : "bg-gray-50"
                   }`}
                 >
-                  <td className="px-6 py-3">{u.id}</td>
+                  {/* <td className="px-6 py-3">{u._id}</td> */}
                   <td className="px-6 py-3">{u.email}</td>
                   <td className="px-6 py-3">{u.birthdate || "-"}</td>
                   <td className="px-6 py-3">{u.address_street || "-"}</td>
