@@ -37,7 +37,7 @@ const ConfigTable = () => {
 
   return (
     <div className="overflow-x-auto shadow-xl rounded-xl border border-gray-200 bg-white mt-8">
-      <table className="w-full text-left text-gray-700 min-w-[600px]">
+      <table className="w-full text-left text-gray-700 min-w-fit">
         <thead className="bg-gradient-to-r from-green-500 to-teal-500 text-white">
           <tr>
             <th className="px-6 py-3 text-sm font-semibold">Step Key</th>
