@@ -53,6 +53,7 @@ API Integration: All API calls are centralized in a dedicated file for cleaner c
 
 
 # To-Do (Future Enhancements)
+    Add Validations on all fields.
     Enhance App Security:
     Implement JWT tokens.
     Improve Error Handling:
