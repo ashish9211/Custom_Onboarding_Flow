@@ -169,7 +169,7 @@ const handleAuth = async (e) => {
   const setterMap = { setAboutMe, setAddress, setBirthdate };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="flex justify-center items-center min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl">
         <div className="bg-blue-600 text-white text-center py-4 rounded-t-2xl font-bold text-xl">
           {currentPage?.title || `Step ${stepIndex + 1}`}

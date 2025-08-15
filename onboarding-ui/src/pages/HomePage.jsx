@@ -3,12 +3,12 @@ import OnboardingWizard from "../components/OnboardingWizard";
 
 const AdminPage = () => {
   return (
-    <div className="p-8 bg-gradient-to-b from-gray-50 to-gray-100 min-h-screen">
-      <div className="max-w-7xl mx-auto">
+    
+      
         
         <OnboardingWizard/>
-      </div>
-    </div>
+      
+    
   );
 };
 
