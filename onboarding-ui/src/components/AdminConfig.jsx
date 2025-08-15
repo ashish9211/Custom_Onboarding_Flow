@@ -1,108 +1,163 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
-const BASE_URL = "https://custom-onboarding-flow.onrender.com";
+import React, { useEffect, useState } from "react";
+import Toast from "../components/Toast";
+import * as configApi from "../api/admin";
+
+// Use default components/pages if backend fails
 const availableComponents = [
   { key: "aboutMe", label: "About Me" },
   { key: "address", label: "Address" },
   { key: "birthdate", label: "Birthdate" },
 ];
 
-const AdminConfig = () => {
-  const [page2Components, setPage2Components] = useState([]);
-  const [page3Components, setPage3Components] = useState([]);
-  const [error, setError] = useState(null);
-  const [message, setMessage] = useState(null);
+const defaultPages = [
+  { key: "step-1", title: "Step-1", order: 1, components: ["address", "birthdate"] },
+  { key: "step-2", title: "Step-2", order: 2, components: ["aboutMe"] },
+];
 
-  // Fetch existing config on mount with defaults
+const AdminConfig = () => {
+  const [pages, setPages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [toast, setToast] = useState(null);
+  const [toastType, setToastType] = useState("success");
+
   useEffect(() => {
-    axios
-      .get(`${BASE_URL}/api/config`)
-      .then((res) => {
-        setPage2Components(res.data.page2Components?.length ? res.data.page2Components : ["aboutMe"]);
-        setPage3Components(res.data.page3Components?.length ? res.data.page3Components : ["address"]);
-      })
-      .catch(() => {
-        setPage2Components(["aboutMe"]);
-        setPage3Components(["address"]);
-        setError("Failed to load config, defaults applied");
-      });
+    const fetchConfig = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await configApi.getConfig();
+        if (res.data?.pages?.length > 0) {
+          const normalized = res.data.pages
+            .map((p, idx) => ({
+              key: p.key || `step-${idx + 1}`,
+              title: p.title || `Step-${idx + 1}`,
+              order: typeof p.order === "number" ? p.order : idx + 1,
+              components: Array.isArray(p.components) ? p.components : [],
+            }))
+            .sort((a, b) => a.order - b.order);
+          setPages(normalized);
+        } else {
+          setPages(defaultPages);
+        }
+      } catch (err) {
+        console.warn("Failed to load config, applying defaults", err?.message);
+        setPages(defaultPages);
+        setError("Failed to load config. Defaults applied.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchConfig();
   }, []);
 
-  // Toggle component selection for a given page
-  const toggleComponent = (page, compKey) => {
-    if (page === 2) {
-      setPage2Components((prev) =>
-        prev.includes(compKey) ? prev.filter((c) => c !== compKey) : [...prev, compKey]
-      );
-    } else {
-      setPage3Components((prev) =>
-        prev.includes(compKey) ? prev.filter((c) => c !== compKey) : [...prev, compKey]
-      );
-    }
+  const toggleComponent = (pageKey, compKey) => {
+    setPages((prev) =>
+      prev.map((p) =>
+        p.key === pageKey
+          ? {
+              ...p,
+              components: p.components.includes(compKey)
+                ? p.components.filter((c) => c !== compKey)
+                : [...p.components, compKey],
+            }
+          : p
+      )
+    );
   };
 
-  // Submit config update
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
-    setMessage(null);
 
-    if (page2Components.length === 0 || page3Components.length === 0) {
-      setError("Each page must have at least one component selected.");
-      return;
+    for (const p of pages) {
+      if (!p.components || p.components.length === 0) {
+        setError(`Each page must have at least one component. Check ${p.title}`);
+        setToastType("error");
+        setToast(`Each page must include at least one component (error on ${p.title})`);
+        return;
+      }
     }
 
     try {
-      await axios.post(`${BASE_URL}/api/config`, {
-        page2Components,
-        page3Components,
-      });
-      setMessage("Configuration saved successfully.");
-    } catch {
+      await configApi.saveConfig(pages);
+      setToastType("success");
+      setToast("Configuration saved successfully ✅");
+    } catch (err) {
+      // fallback for legacy backend
+      if (err?.response?.status === 400 || err?.response?.status === 404) {
+        try {
+          const page2 = pages[0]?.components || [];
+          const page3 = pages[1]?.components || [];
+          await configApi.saveConfigLegacy(page2, page3);
+          setToastType("success");
+          setToast("Configuration saved (legacy fallback) ✅");
+          return;
+        } catch (err2) {
+          console.error("Fallback failed", err2);
+        }
+      }
+      console.error("Save failed", err);
       setError("Failed to save configuration.");
+      setToastType("error");
+      setToast("Failed to save configuration ❌");
     }
   };
 
-  // Render checkbox list for a page
-  const renderCheckboxes = (pageNum, selectedComponents) => (
-    <div className="bg-white shadow-md hover:shadow-lg rounded-lg p-6 mb-6 transition">
-      <h3 className="text-xl font-semibold text-gray-800 mb-4">Page {pageNum} Components</h3>
-      <div className="space-y-3">
-        {availableComponents.map(({ key, label }) => (
-          <label key={key} className="flex items-center space-x-3 cursor-pointer text-gray-700">
-            <input
-              type="checkbox"
-              checked={selectedComponents.includes(key)}
-              onChange={() => toggleComponent(pageNum, key)}
-              className="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-400 focus:ring-2"
-            />
-            <span className="font-medium">{label}</span>
-          </label>
-        ))}
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100 p-8">
+        <div className="text-gray-500 animate-pulse">Loading admin config...</div>
       </div>
-      <p className="text-sm text-gray-500 mt-2">
-        Select which fields appear on this page of the onboarding wizard.
-      </p>
-    </div>
-  );
+    );
+  }
 
   return (
-    <div className="flex justify-center items-start min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
-      <div className="w-full max-w-3xl">
-        <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">
-          🛠 Admin Configuration
-        </h2>
+    <div className="min-h-screen p-8 bg-gradient-to-b from-gray-50 to-gray-100">
+      <div className="max-w-4xl mx-auto">
+        <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">🛠 Admin Configuration</h2>
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">{error}</div>
-        )}
-        {message && (
-          <div className="mb-4 p-3 bg-green-100 text-green-700 rounded">{message}</div>
-        )}
+        {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">{error}</div>}
 
-        <form onSubmit={handleSubmit}>
-          {renderCheckboxes(2, page2Components)}
-          {renderCheckboxes(3, page3Components)}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {pages
+            .slice()
+            .sort((a, b) => a.order - b.order)
+            .map((page) => (
+              <div
+                key={page.key}
+                className="bg-white border border-gray-200 shadow-md rounded-xl p-6 transition hover:shadow-lg"
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-semibold text-gray-800">{page.title}</h3>
+                  <div className="text-sm text-gray-500">Order: {page.order}</div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {availableComponents.map(({ key, label }) => (
+                    <label
+                      key={key}
+                      className="flex items-center space-x-3 cursor-pointer text-gray-700"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={page.components.includes(key)}
+                        onChange={() => toggleComponent(page.key, key)}
+                        className="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-400 focus:ring-2"
+                      />
+                      <div>
+                        <div className="font-medium">{label}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+
+                <p className="text-sm text-gray-500 mt-3">
+                  Select which components appear on this step of the onboarding wizard.
+                </p>
+              </div>
+            ))}
 
           <button
             type="submit"
@@ -112,6 +167,15 @@ const AdminConfig = () => {
           </button>
         </form>
       </div>
+
+      {toast && (
+        <Toast
+          message={toast}
+          type={toastType}
+          onClose={() => setToast(null)}
+          duration={3000}
+        />
+      )}
     </div>
   );
 };

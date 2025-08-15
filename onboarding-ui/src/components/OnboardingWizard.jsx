@@ -1,156 +1,126 @@
 import React, { useState, useEffect } from "react";
+import { toast } from "../utils/toast";
+import { AboutMe } from "./forms/AboutMe";
+import { Address } from "./forms/Address";
+import { Birthdate } from "./forms/Birthdate";
+import * as userApi from "../api/users";
 import axios from "axios";
 
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 const componentMap = {
-  aboutMe: ({ value, onChange }) => (
-    <div className="mb-6">
-      <label className="block mb-2 font-semibold text-gray-700">About Me</label>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        rows={8}
-        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
-        placeholder="Tell us about yourself..."
-      />
-    </div>
-  ),
-  address: ({ value, onChange }) => (
-    <div className="mb-6">
-      <label className="block mb-2 font-semibold text-gray-700">Street</label>
-      <input
-        type="text"
-        value={value.street}
-        onChange={(e) => onChange({ ...value, street: e.target.value })}
-        className="w-full px-4 py-2 mb-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
-        placeholder="123 Main St"
-      />
-      <label className="block mb-2 font-semibold text-gray-700">City</label>
-      <input
-        type="text"
-        value={value.city}
-        onChange={(e) => onChange({ ...value, city: e.target.value })}
-        className="w-full px-4 py-2 mb-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
-        placeholder="City"
-      />
-      <label className="block mb-2 font-semibold text-gray-700">State</label>
-      <input
-        type="text"
-        value={value.state}
-        onChange={(e) => onChange({ ...value, state: e.target.value })}
-        className="w-full px-4 py-2 mb-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
-        placeholder="State"
-      />
-      <label className="block mb-2 font-semibold text-gray-700">Zip</label>
-      <input
-        type="text"
-        value={value.zip}
-        onChange={(e) => onChange({ ...value, zip: e.target.value })}
-        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
-        placeholder="Zip Code"
-      />
-    </div>
-  ),
-  birthdate: ({ value, onChange }) => (
-    <div className="mb-6">
-      <label className="block mb-2 font-semibold text-gray-700">Birthdate</label>
-      <input
-        type="date"
-        value={value || ""} // Keep as string YYYY-MM-DD
-        onChange={(e) => onChange(e.target.value)} // Store string
-        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
-      />
-    </div>
-  ),
+  aboutMe: AboutMe,
+  address: Address,
+  birthdate: Birthdate,
 };
 
+
 const OnboardingWizard = () => {
-  const [step, setStep] = useState(1);
+  const [pages, setPages] = useState([]);
+  const [stepIndex, setStepIndex] = useState(0);
+  const [mode, setMode] = useState("signup"); // signup / login
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [userId, setUserId] = useState(null);
-  const [error, setError] = useState(null);
-  const [config, setConfig] = useState({ page2Components: [], page3Components: [] });
 
   // Form data
   const [aboutMe, setAboutMe] = useState("");
   const [address, setAddress] = useState({ street: "", city: "", state: "", zip: "" });
-  const [birthdate, setBirthdate] = useState(""); // string YYYY-MM-DD
-  const BASE_URL = "https://custom-onboarding-flow.onrender.com";
-  // Fetch config & check localStorage on mount
+  const [birthdate, setBirthdate] = useState("");
+
+  // Fetch onboarding config and resume user
   useEffect(() => {
-    axios
-      .get(`${BASE_URL}/api/config`)
-      .then((res) => setConfig(res.data))
-      .catch((err) => console.error("Failed to fetch config", err));
+    userApi.getConfig()
+      .then((res) => {
+        if (res.data.pages) {
+          const sorted = [...res.data.pages].sort((a, b) => a.order - b.order);
+          setPages(sorted);
+        }
+      })
+      .catch(() => toast.error("Failed to load wizard config"));
 
     const savedUserId = localStorage.getItem("userId");
     if (savedUserId) {
       setUserId(savedUserId);
-      setStep(2); // Resume at Step 2
+      userApi.getUser(savedUserId)
+        .then((res) => {
+          const currentStep = res.data.currentStep || 0;
+          setStepIndex(currentStep);
+          if (res.data.aboutMe) setAboutMe(res.data.aboutMe);
+          if (res.data.birthdate) setBirthdate(res.data.birthdate);
+          if (res.data.address) setAddress(res.data.address);
+        })
+        .catch(() => localStorage.removeItem("userId"));
     }
   }, []);
 
-  const handleStep1Submit = async (e) => {
-    e.preventDefault();
-    setError(null);
-    if (!email || !password) {
-      setError("Email and password are required");
-      return;
-    }
-    try {
-      const res = await axios.post(`${BASE_URL}/api/users`, { email, password });
-      setUserId(res.data.id);
-      localStorage.setItem("userId", res.data.id);
-      setStep(2);
-    } catch (err) {
-      setError(err.response?.data?.error || "Failed to create user");
-    }
-  };
+  // Signup/Login handler
+const handleAuth = async (e) => {
+  e.preventDefault();
+  if (!email || !password) return toast.error("Email and password required");
 
+  try {
+    const res = mode === "signup"
+      ? await userApi.signup(email, password)
+      : await userApi.login(email, password);
+
+    setUserId(res.data.id);
+    localStorage.setItem("userId", res.data.id);
+    setStepIndex(0);
+
+    // Dynamic toast message
+    toast.success(
+      mode === "signup" ? "Signup successful ✅" : "Login successful ✅"
+    );
+  } catch (err) {
+    toast.error(err.response?.data?.error || `${mode === "signup" ? "Signup" : "Login"} failed ❌`);
+  }
+};
+
+  // Save current step
   const handleStepSubmit = async () => {
-    if (!userId) return setError("User ID missing");
+    if (!userId) return toast.error("User ID missing");
+    const currentPage = pages[stepIndex];
+    if (!currentPage?.components?.length) return toast.error("No components defined for this step");
 
-    let updateData = {};
-    const componentsOnStep = step === 2 ? config.page2Components : config.page3Components;
-
-    componentsOnStep.forEach((comp) => {
-      if (comp === "aboutMe") updateData.about_me = aboutMe;
-      else if (comp === "address") {
-        updateData.address_street = address.street;
-        updateData.address_city = address.city;
-        updateData.address_state = address.state;
-        updateData.address_zip = address.zip;
-      } else if (comp === "birthdate") updateData.birthdate = birthdate; // string
+    const updateData = {};
+    currentPage.components.forEach((comp) => {
+      if (comp === "aboutMe") updateData.aboutMe = aboutMe;
+      else if (comp === "address") updateData.address = { ...address };
+      else if (comp === "birthdate") updateData.birthdate = birthdate;
     });
+    updateData.currentStep = stepIndex + 1;
 
     try {
-      await axios.patch(`${BASE_URL}/api/users/${userId}`, updateData);
-      if (step === 3) {
-        alert("Onboarding Complete! Thank you.");
+      await userApi.updateUser(userId, updateData);
+      if (stepIndex + 1 >= pages.length) {
+        toast.success("Onboarding Complete! 🎉");
         localStorage.removeItem("userId");
-        setStep(1);
+        setStepIndex(0);
+        setMode("signup");
         setEmail("");
         setPassword("");
         setUserId(null);
         setAboutMe("");
         setAddress({ street: "", city: "", state: "", zip: "" });
         setBirthdate("");
-      } else setStep(step + 1);
-    } catch {
-      setError("Failed to update user data");
+      } else {
+        setStepIndex(stepIndex + 1);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.error || "Failed to update user data ❌");
     }
   };
 
-  if (step === 1) {
+  // AUTH STEP
+  if (!userId) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <div className="flex justify-center items-center min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 p-4">
         <div className="w-full max-w-md bg-white rounded-2xl shadow-xl">
           <div className="bg-blue-600 text-white text-center py-4 rounded-t-2xl font-bold text-xl">
-            Create Account
+            {mode === "signup" ? "Create Account" : "Log In"}
           </div>
           <div className="p-6">
-            {error && <p className="text-red-500 mb-4">{error}</p>}
-            <form onSubmit={handleStep1Submit} className="space-y-4">
+            <form onSubmit={handleAuth} className="space-y-4">
               <div>
                 <label className="block mb-1 font-semibold text-gray-700">Email</label>
                 <input
@@ -175,30 +145,47 @@ const OnboardingWizard = () => {
                 type="submit"
                 className="w-full py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition"
               >
-                Next
+                {mode === "signup" ? "Sign Up" : "Log In"}
               </button>
             </form>
+            <p className="mt-4 text-center text-sm">
+              {mode === "signup" ? "Already have an account?" : "Don't have an account?"}{" "}
+              <button
+                onClick={() => setMode(mode === "signup" ? "login" : "signup")}
+                className="text-indigo-600 hover:underline"
+              >
+                {mode === "signup" ? "Log in" : "Sign up"}
+              </button>
+            </p>
           </div>
         </div>
       </div>
     );
   }
 
-  const componentsOnStep = step === 2 ? config.page2Components : config.page3Components;
+  // ONBOARDING STEP
+  const currentPage = pages[stepIndex];
+  const valueMap = { aboutMe, address, birthdate };
+  const setterMap = { setAboutMe, setAddress, setBirthdate };
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl">
         <div className="bg-blue-600 text-white text-center py-4 rounded-t-2xl font-bold text-xl">
-          Step {step}
+          {currentPage?.title || `Step ${stepIndex + 1}`}
         </div>
         <div className="p-6">
-          {error && <p className="text-red-500 mb-4">{error}</p>}
-          {componentsOnStep.map((comp) => {
-            if (comp === "aboutMe") return componentMap.aboutMe({ value: aboutMe, onChange: setAboutMe });
-            else if (comp === "address") return componentMap.address({ value: address, onChange: setAddress });
-            else if (comp === "birthdate") return componentMap.birthdate({ value: birthdate, onChange: setBirthdate });
-            return null;
+          {currentPage?.components?.map((comp) => {
+            const Component = componentMap[comp];
+            if (!Component) return null;
+
+            return (
+              <Component
+                key={comp}
+                value={valueMap[comp]}
+                onChange={setterMap[`set${comp.charAt(0).toUpperCase() + comp.slice(1)}`]}
+              />
+            );
           })}
           <button
             onClick={handleStepSubmit}
