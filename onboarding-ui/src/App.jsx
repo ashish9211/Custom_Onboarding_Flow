@@ -2,7 +2,7 @@
 import './App.css'
 
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import OnboardingWizard from './components/OnboardingWizard';
+
 import DataPage from './pages/DataPage';
 import AdminPage from './pages/AdminPage';
 import Navbar from './components/Navbar';
